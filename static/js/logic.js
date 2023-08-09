@@ -5,18 +5,25 @@ function makeFeature(feature){
 
 // Get JSON Data
 url = "https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/all_week.geojson"
-d3.json(url).then(function(data){
+url2 = "/tectonicplates-master/GeoJSON/PB2002_boundaries.json"
+
+// Run with Live Server to bypass CORS policy
+Promise.all([
+  d3.json(url),
+  d3.json(url2)
+]).then(function([data, borderData]){
   console.log(data);
+  console.log(borderData);
 
-  // Making map here, using BBOX to figure out where to center the map - centering via midpoint between min and max latitude/longitude
-  let lng = (data.bbox[0]+data.bbox[3])/2
-  let lat = (data.bbox[1]+data.bbox[4])/2
-  let map = L.map("map").setView([lat, lng], 2);
-
-  L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  // Adding tilesets here
+  let street = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
       maxZoom: 19,
       attribution: '© OpenStreetMap'
-  }).addTo(map);
+  });
+
+  let topo = L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', {
+    attribution: 'Map data: &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, <a href="http://viewfinderpanoramas.org">SRTM</a> | Map style: &copy; <a href="https://opentopomap.org">OpenTopoMap</a> (<a href="https://creativecommons.org/licenses/by-sa/3.0/">CC-BY-SA</a>)'
+  });
 
   // Defining geoJSON Marker options through a function to make circles with radii scaling with passed in argument.
   function geojsonMarkerOptions(number){
@@ -28,7 +35,7 @@ d3.json(url).then(function(data){
     };
   } 
 
-  // Because the data used follows proper GeoJSON formatting, we don't have to specify "data.features" and can have L.geoJson find where the features are by itself.
+  // Because the data used follows proper GeoJSON formatting, we don't have to specify "data.features" and can have L.geoJson find where the features are by itself. Note: geojson is also an overlay layer.
   let geojson = L.choropleth(data, {
 
     //L.choropleth extends from L.geoJson, so any tricks done there can be transferred over here
@@ -69,7 +76,7 @@ d3.json(url).then(function(data){
         <b>Magnitude:</b> ${feature.properties.mag}`
       )
     }
-  }).addTo(map);
+  })
 
   // Set up the legend.
   let legend = L.control({ position: "bottomright" });
@@ -93,8 +100,41 @@ d3.json(url).then(function(data){
     return div;
   };
 
+  // Make new layer
+  let borderjson = L.geoJSON(borderData);
+
+  // Create a baseMaps object.
+  let baseMaps = {
+    "Street Map": street,
+    "Topographic Map": topo
+  };
+
+  // Create an overlay object to hold our overlay.
+  let overlayMaps = {
+    "Earthquakes": geojson,
+    "Tectonic Boundaries":borderjson
+  };
+
+  // Making map here, using BBOX to figure out where to center the map - centering via midpoint between min and max latitude/longitude
+  let lng = (data.bbox[0]+data.bbox[3])/2
+  let lat = (data.bbox[1]+data.bbox[4])/2
+
+  // Defining what layers to load in on default
+  let map = L.map("map", {
+    center: [lat, lng],
+    zoom: 2,
+    layers: [street, borderjson, geojson]
+  });
+
   // Adding the legend to the map
   legend.addTo(map);
-  
+
+  // Adding layer control
+  let layerControl = L.control.layers(baseMaps, overlayMaps, {collapsed:false}).addTo(map);
+
+  // It's a little hacky, but this makes sure the circle markers stay on top
+  map.on("overlayadd", function (event) {
+    geojson.bringToFront();
+  });
 });
 
