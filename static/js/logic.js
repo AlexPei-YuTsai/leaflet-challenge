@@ -5,7 +5,7 @@ function makeFeature(feature){
 
 // Get JSON Data
 url = "https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/all_week.geojson"
-url2 = "/GeoJSON/PB2002_boundaries.json"
+url2 = "GeoJSON/PB2002_boundaries.json"
 
 // Run with Live Server to bypass CORS policy
 Promise.all([
