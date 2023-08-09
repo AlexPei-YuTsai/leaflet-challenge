@@ -12,9 +12,6 @@ Promise.all([
   d3.json(url),
   d3.json(url2)
 ]).then(function([data, borderData]){
-  console.log(data);
-  console.log(borderData);
-
   // Adding tilesets here
   let street = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
       maxZoom: 19,
